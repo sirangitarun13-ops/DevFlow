@@ -1,0 +1,3 @@
+import { useAuth } from "../auth/AuthContext";
+import { Badge, Card, PageTitle } from "../ui";
+export default function ProfilePage() { const { user } = useAuth(); return <><PageTitle eyebrow="ACCOUNT" title="Your profile" detail="Identity and roles returned by the authenticated backend session." /><Card><div className="profile-header"><span className="avatar large">{user?.full_name.slice(0, 1).toUpperCase()}</span><div><h2>{user?.full_name}</h2><p className="muted">{user?.email}</p></div></div><div className="role-list">{user?.roles.map((role) => <Badge key={role.code} tone="accent">{role.name}</Badge>)}</div></Card></>; }

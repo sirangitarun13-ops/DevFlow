@@ -1,0 +1,53 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+
+# Node and frontend build output
+node_modules/
+dist/
+build/
+.vite/
+.next/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test artifacts and runtime output
+.coverage
+coverage/
+reports/
+uploads/
+*.log
+
+# SQLite development databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+devflow_local.db*
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+.tmp/

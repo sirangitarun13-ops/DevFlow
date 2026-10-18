@@ -1,0 +1,135 @@
+erDiagram
+    ROLES ||--o{ USER_ROLES : assigns
+    USERS ||--o{ USER_ROLES : receives
+    USERS ||--o{ PROJECTS : creates
+    PROJECTS ||--o{ PROJECT_MEMBERS : has
+    USERS ||--o{ PROJECT_MEMBERS : joins
+    PROJECTS ||--o{ MILESTONES : contains
+    PROJECTS ||--o{ REQUIREMENTS : contains
+    USERS ||--o{ REQUIREMENTS : creates_or_updates
+    REQUIREMENTS ||--o{ REQUIREMENT_CHANGE_REQUESTS : has
+    USERS ||--o{ REQUIREMENT_CHANGE_REQUESTS : requests_or_reviews
+    PROJECTS ||--o{ SPRINTS : contains
+    PROJECTS ||--o{ TASKS : contains
+    REQUIREMENTS o|--o{ TASKS : informs
+    SPRINTS o|--o{ TASKS : schedules
+    USERS o|--o{ TASKS : assigned_or_creates
+    TASKS ||--o{ TASK_COMMENTS : has
+    USERS ||--o{ TASK_COMMENTS : authors
+    PROJECTS ||--o{ BUGS : contains
+    REQUIREMENTS o|--o{ BUGS : relates_to
+    TASKS o|--o{ BUGS : relates_to
+    USERS ||--o{ BUGS : reports_or_is_assigned
+    PROJECTS ||--o{ TEST_CASES : contains
+    REQUIREMENTS ||--o{ TEST_CASES : validates
+    USERS ||--o{ TEST_CASES : creates_or_executes
+    PROJECTS ||--o{ TRACEABILITY_LINKS : scopes
+    USERS ||--o{ TRACEABILITY_LINKS : creates
+    PROJECTS ||--o{ IMPACT_ANALYSES : scopes
+    REQUIREMENTS ||--o{ IMPACT_ANALYSES : analyzes
+    REQUIREMENT_CHANGE_REQUESTS o|--o{ IMPACT_ANALYSES : supplies_context
+    USERS ||--o{ IMPACT_ANALYSES : initiates
+    IMPACT_ANALYSES ||--o{ IMPACT_ANALYSIS_RESULTS : produces
+    PROJECTS ||--o{ REPORTS : has
+    USERS ||--o{ REPORTS : generates
+    IMPACT_ANALYSES o|--o{ REPORTS : supports
+    PROJECTS o|--o{ AUDIT_LOGS : scopes
+    USERS o|--o{ AUDIT_LOGS : acts
+
+    ROLES {
+        uuid id PK
+        varchar code UK
+    }
+    USERS {
+        uuid id PK
+        varchar email UK
+        text password_hash
+    }
+    USER_ROLES {
+        uuid user_id PK, FK
+        uuid role_id PK, FK
+    }
+    PROJECTS {
+        uuid id PK
+        uuid created_by_user_id FK
+    }
+    PROJECT_MEMBERS {
+        uuid project_id PK, FK
+        uuid user_id PK, FK
+    }
+    MILESTONES {
+        uuid id PK
+        uuid project_id FK
+    }
+    REQUIREMENTS {
+        uuid id PK
+        uuid project_id FK
+        varchar requirement_key
+        int version
+    }
+    REQUIREMENT_CHANGE_REQUESTS {
+        uuid id PK
+        uuid requirement_id FK
+        uuid requested_by_user_id FK
+    }
+    SPRINTS {
+        uuid id PK
+        uuid project_id FK
+    }
+    TASKS {
+        uuid id PK
+        uuid project_id FK
+        uuid requirement_id FK
+        uuid sprint_id FK
+        uuid assigned_to_user_id FK
+    }
+    TASK_COMMENTS {
+        uuid id PK
+        uuid task_id FK
+        uuid author_user_id FK
+    }
+    BUGS {
+        uuid id PK
+        uuid project_id FK
+        uuid requirement_id FK
+        uuid task_id FK
+    }
+    TEST_CASES {
+        uuid id PK
+        uuid project_id FK
+        uuid requirement_id FK
+    }
+    TRACEABILITY_LINKS {
+        uuid id PK
+        uuid project_id FK
+        varchar source_artifact_type
+        uuid source_artifact_id
+        varchar target_artifact_type
+        uuid target_artifact_id
+    }
+    IMPACT_ANALYSES {
+        uuid id PK
+        uuid project_id FK
+        uuid requirement_id FK
+        uuid change_request_id FK
+    }
+    IMPACT_ANALYSIS_RESULTS {
+        uuid id PK
+        uuid impact_analysis_id FK
+        varchar artifact_type
+        uuid artifact_id
+    }
+    REPORTS {
+        uuid id PK
+        uuid project_id FK
+        uuid impact_analysis_id FK
+    }
+    AUDIT_LOGS {
+        uuid id PK
+        uuid project_id FK
+        uuid actor_user_id FK
+    }
+
+%% source_artifact_id, target_artifact_id, impact_analysis_results.artifact_id,
+%% and audit_logs.entity_id are typed logical references. They require later
+%% constraint-trigger or service-layer validation; no misleading static FK is shown.

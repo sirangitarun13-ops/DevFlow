@@ -1,0 +1,8 @@
+# Frontend-local generated files
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+*.log
+.env

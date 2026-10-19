@@ -6,8 +6,115 @@ import { useAuth } from "../auth/AuthContext";
 import { Badge, Card, EmptyState, ErrorState, LoadingState, Metric, PageTitle } from "../ui";
 
 export default function ProjectDetailPage() {
-  const { id = "" } = useParams(); const { canManage } = useAuth(); const [project, setProject] = useState<Project | null>(null); const [requirements, setRequirements] = useState<Requirement[]>([]); const [tasks, setTasks] = useState<Task[]>([]); const [bugs, setBugs] = useState<Bug[]>([]); const [tests, setTests] = useState<TestCase[]>([]); const [error, setError] = useState("");
-  useEffect(() => { Promise.all([api.project(id), api.requirements(id), api.tasks(id), api.bugs(id), api.testCases(id)]).then(([p, r, t, b, tc]) => { setProject(p); setRequirements(r); setTasks(t); setBugs(b); setTests(tc); }).catch((e) => setError(e instanceof Error ? e.message : "Unable to load project")); }, [id]);
-  if (error) return <ErrorState message={error} />; if (!project) return <LoadingState />;
-  return <><PageTitle eyebrow="PROJECT" title={project.name} detail={project.description || "Project overview and delivery signals."} action={<div className="button-row">{canManage && <Link className="secondary-button" to="/team">Team</Link>}<Link className="secondary-button" to={`/projects/${id}/analytics`}>Analytics</Link><Link className="secondary-button" to={`/projects/${id}/reports`}>Reports</Link><Link className="secondary-button" to="/requirements">Browse requirements</Link></div>} /><div className="metrics-grid"><Metric label="Requirements" value={requirements.length} accent /><Metric label="Tasks" value={tasks.length} /><Metric label="Open bugs" value={bugs.filter((b) => !["resolved", "closed"].includes(b.status)).length} /><Metric label="Test cases" value={tests.length} /></div><div className="dashboard-grid"><Card><div className="card-heading"><div><span className="eyebrow">REQUIREMENTS</span><h2>What are we building?</h2></div><Link to="/requirements" className="text-link">View all</Link></div>{requirements.length ? <div className="table-list">{requirements.slice(0, 6).map((requirement) => <Link to={`/requirements/${requirement.id}`} className="table-row" key={requirement.id}><span className="mono">{requirement.requirement_key}</span><strong>{requirement.title}</strong><Badge tone={requirement.status === "completed" ? "good" : "accent"}>{requirement.status}</Badge></Link>)}</div> : <EmptyState title="No requirements" detail="Requirements created for this project appear here." />}</Card><Card><div className="card-heading"><div><span className="eyebrow">DELIVERY</span><h2>Execution health</h2></div></div><div className="signal-list"><div><span>Completed tasks</span><strong>{tasks.filter((task) => task.status === "completed").length}</strong></div><div><span>In review</span><strong>{tasks.filter((task) => task.status === "in_review").length}</strong></div><div><span>Failed tests</span><strong>{tests.filter((test) => test.status === "failed").length}</strong></div></div></Card></div></>;
+  const { id = "" } = useParams();
+  const { canManageProject } = useAuth();
+  const canManage = canManageProject(id);
+  const [project, setProject] = useState<Project | null>(null);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [bugs, setBugs] = useState<Bug[]>([]);
+  const [tests, setTests] = useState<TestCase[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    Promise.all([api.project(id), api.requirements(id), api.tasks(id), api.bugs(id), api.testCases(id)])
+      .then(([p, r, t, b, tc]) => {
+        setProject(p);
+        setRequirements(r);
+        setTasks(t);
+        setBugs(b);
+        setTests(tc);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load project"));
+  }, [id]);
+  if (error) return <ErrorState message={error} />;
+  if (!project) return <LoadingState />;
+  return (
+    <>
+      <PageTitle
+        eyebrow="PROJECT"
+        title={project.name}
+        detail={project.description || "Project overview and delivery signals."}
+        action={
+          <div className="button-row">
+            {canManage && <Link className="secondary-button" to="/team">Team</Link>}
+            <Link className="secondary-button" to={`/projects/${id}/analytics`}>Analytics</Link>
+            <Link className="secondary-button" to={`/projects/${id}/reports`}>Reports</Link>
+            <Link className="secondary-button" to="/requirements">Browse requirements</Link>
+          </div>
+        }
+      />
+      <div className="metrics-grid">
+        <Metric label="Requirements" value={requirements.length} accent />
+        <Metric label="Tasks" value={tasks.length} />
+        <Metric label="Open bugs" value={bugs.filter((b) => !["resolved", "closed"].includes(b.status)).length} />
+        <Metric label="Test cases" value={tests.length} />
+      </div>
+      <div className="dashboard-grid">
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">REQUIREMENTS</span>
+              <h2>What are we building?</h2>
+            </div>
+            <Link to="/requirements" className="text-link">View all</Link>
+          </div>
+          {requirements.length ? (
+            <div className="table-list">
+              {requirements.slice(0, 6).map((requirement) => (
+                <Link to={`/requirements/${requirement.id}`} className="table-row" key={requirement.id}>
+                  <span className="mono">{requirement.requirement_key}</span>
+                  <strong>{requirement.title}</strong>
+                  <Badge tone={requirement.status === "completed" ? "good" : "accent"}>{requirement.status}</Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No requirements" detail="Requirements created for this project appear here." />
+          )}
+        </Card>
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">DELIVERY</span>
+              <h2>Execution health</h2>
+            </div>
+          </div>
+          <div className="signal-list">
+            <div>
+              <span>Completed tasks</span>
+              <strong>{tasks.filter((task) => task.status === "completed").length}</strong>
+            </div>
+            <div>
+              <span>In review</span>
+              <strong>{tasks.filter((task) => task.status === "in_review").length}</strong>
+            </div>
+            <div>
+              <span>Failed tests</span>
+              <strong>{tests.filter((test) => test.status === "failed").length}</strong>
+            </div>
+            <div>
+              <span>Open bugs</span>
+              <strong>{bugs.filter((b) => !["resolved", "closed"].includes(b.status)).length}</strong>
+            </div>
+          </div>
+        </Card>
+      </div>
+      <div className="dashboard-grid">
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">QUICK ACTIONS</span>
+              <h2>Common tasks</h2>
+            </div>
+          </div>
+          <div className="quick-actions">
+            <Link to="/requirements" className="action-link">Create requirement</Link>
+            <Link to="/tasks" className="action-link">Create task</Link>
+            {canManage && <Link to="/team" className="action-link">Manage team</Link>}
+            <Link to="/change-requests" className="action-link">Log change request</Link>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
 }

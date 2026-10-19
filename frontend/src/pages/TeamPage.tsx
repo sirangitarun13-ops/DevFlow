@@ -8,9 +8,9 @@ import { Badge, Card, EmptyState, ErrorState, LoadingState, Metric, PageTitle } 
 function isDeveloper(member: ProjectMember) { return member.roles.some((role) => role.code === "developer"); }
 
 export default function TeamPage() {
-  const { hasRole } = useAuth();
-  const canManageTeam = hasRole("admin", "project_manager");
+  const { canManageProject } = useAuth();
   const { selectedProject: project } = useProjects();
+  const canManageTeam = project ? canManageProject(project.id) : false;
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [developers, setDevelopers] = useState<DirectoryUser[]>([]);
   const [selectedDeveloper, setSelectedDeveloper] = useState<ProjectMember | null>(null);

@@ -3,7 +3,7 @@ import { useAuth } from "./auth/AuthContext";
 import type { RoleCode } from "./api/types";
 import { useProjects } from "./project/ProjectContext";
 
-export interface NavItem { label: string; to: string; roles: RoleCode[] }
+export interface NavItem { label: string; to: string; roles: RoleCode[]; projectScoped?: boolean }
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/", roles: ["admin", "project_manager", "team_lead", "developer", "tester", "client"] },
   { label: "Projects", to: "/projects", roles: ["admin", "project_manager", "team_lead", "client"] },
@@ -11,7 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Milestones", to: "/milestones", roles: ["project_manager", "client"] },
   { label: "Sprints", to: "/sprints", roles: ["project_manager", "team_lead", "developer"] },
   { label: "Tasks", to: "/tasks", roles: ["project_manager", "team_lead", "developer"] },
-  { label: "Team", to: "/team", roles: ["admin", "project_manager", "team_lead"] },
+  { label: "Team", to: "/team", roles: ["admin", "project_manager", "team_lead"], projectScoped: true },
   { label: "Bugs", to: "/bugs", roles: ["team_lead", "developer", "tester"] },
   { label: "Test Cases", to: "/test-cases", roles: ["tester"] },
   { label: "Traceability", to: "/traceability", roles: ["team_lead", "tester", "developer"] },
@@ -21,17 +21,26 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "System", to: "/system", roles: ["admin"] },
 ];
 
-export function navigationForRoles(roles: RoleCode[]) { return NAV_ITEMS.filter((item) => item.roles.some((role) => roles.includes(role))); }
+export function navigationForRoles(roles: RoleCode[], canManageProject?: (projectId: string) => boolean, selectedProjectId?: string | null) {
+  return NAV_ITEMS.filter((item) => {
+    const hasGlobalRole = item.roles.some((role) => roles.includes(role));
+    if (item.projectScoped && canManageProject && selectedProjectId) {
+      // For project-scoped items, project-scoped permission takes precedence over global role
+      return canManageProject(selectedProjectId);
+    }
+    return hasGlobalRole;
+  });
+}
 
 const NAV_GROUPS: Array<[string, string[]]> = [["Workspace", ["Dashboard", "Projects", "Team"]], ["Delivery", ["Requirements", "Milestones", "Sprints", "Tasks", "Bugs", "Test Cases"]], ["Impact & insight", ["Traceability", "Change Requests", "Impact Analysis", "Reports", "System"]]];
 
 export function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, canManageProject } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const roles = user?.roles.map((role) => role.code) ?? [];
-  const navigation = navigationForRoles(roles);
   const { projects, selectedProject, selectedProjectId, selectProject, loading: projectsLoading } = useProjects();
+  const navigation = navigationForRoles(roles, canManageProject, selectedProjectId);
   const currentLabel = navigation.find((item) => location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to)))?.label ?? "Workspace";
   const changeProject = (projectId: string) => {
     selectProject(projectId);

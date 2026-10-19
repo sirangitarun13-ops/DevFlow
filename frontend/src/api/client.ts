@@ -39,6 +39,7 @@ async function download(path: string): Promise<Blob> {
 const json = (method: string, body?: unknown): RequestInit => ({ method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 
 export const api = {
+  register: (body: { full_name: string; email: string; password: string }) => request<{ access_token: string; user: User }>("/auth/register", json("POST", body)),
   login: (email: string, password: string) => request<{ access_token: string; user: User }>("/auth/login", json("POST", { email, password })),
   me: () => request<User>("/auth/me"),
   projects: (limit = 100) => request<Project[]>(`/projects?limit=${limit}`),

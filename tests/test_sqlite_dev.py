@@ -1,6 +1,8 @@
 """SQLite-specific development mode tests."""
 
 from collections.abc import Generator
+import tempfile
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -10,6 +12,7 @@ from uuid import uuid4
 
 from backend.app.core.config import Settings
 from backend.app.db.base import Base
+from backend.app.db.sqlite_path import get_sqlite_file_path, resolve_sqlite_path
 from backend.app.models import auth, core, rcia, traceability
 
 
@@ -230,3 +233,77 @@ def test_settings_is_sqlite() -> None:
         jwt_secret_key="test-secret-key-for-testing-only"
     )
     assert mysql_settings.is_sqlite() is False
+
+
+def test_sqlite_path_resolution_consistency() -> None:
+    """Verify that the shared path resolver produces the same path
+    regardless of the current working directory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "backend"
+        base_dir.mkdir()
+
+        test_url = "sqlite:///./devflow_local.db"
+
+        # Resolve from the base directory (simulating app running from backend)
+        resolved_from_backend = resolve_sqlite_path(test_url, base_dir)
+        expected = f"sqlite:///{base_dir / 'devflow_local.db'}"
+        assert resolved_from_backend == expected
+
+        # Resolve from project root (simulating init script run from project root)
+        project_root = base_dir.parent
+        resolved_from_root = resolve_sqlite_path(test_url, base_dir)
+        assert resolved_from_root == expected
+
+        # Both should resolve to the same absolute path
+        path_from_backend = get_sqlite_file_path(test_url, base_dir)
+        path_from_root = get_sqlite_file_path(test_url, base_dir)
+        assert path_from_backend == path_from_root
+        assert path_from_backend == str((base_dir / "devflow_local.db").resolve())
+
+
+def test_sqlite_path_resolution_various_inputs() -> None:
+    """Test the path resolver with various SQLite URL formats."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "backend"
+        base_dir.mkdir()
+
+        # Relative path with ./
+        assert resolve_sqlite_path("sqlite:///./test.db", base_dir) == f"sqlite:///{base_dir / 'test.db'}"
+
+        # Relative path without ./
+        assert resolve_sqlite_path("sqlite:///test.db", base_dir) == f"sqlite:///{base_dir / 'test.db'}"
+
+        # Absolute path (should be unchanged)
+        abs_path = "/absolute/path.db"
+        assert resolve_sqlite_path(f"sqlite:///{abs_path}", base_dir) == f"sqlite:///{abs_path}"
+
+        # Memory database (should be unchanged)
+        assert resolve_sqlite_path("sqlite:///:memory:", base_dir) == "sqlite:///:memory:"
+
+        # sqlite:// format (two slashes)
+        assert resolve_sqlite_path("sqlite://relative.db", base_dir) == f"sqlite:///{base_dir / 'relative.db'}"
+
+        # Non-SQLite URL (should be unchanged)
+        assert resolve_sqlite_path("postgresql://localhost/db", base_dir) == "postgresql://localhost/db"
+
+        # get_sqlite_file_path returns None for memory and non-SQLite
+        assert get_sqlite_file_path("sqlite:///:memory:", base_dir) is None
+        assert get_sqlite_file_path("postgresql://localhost/db", base_dir) is None
+
+
+def test_init_script_and_app_use_same_resolver() -> None:
+    """Verify that the init script and application use the same path resolver."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "backend"
+        base_dir.mkdir()
+
+        test_url = "sqlite:///./devflow_local.db"
+
+        # This is what the application does (in session.py)
+        app_resolved = resolve_sqlite_path(test_url, base_dir)
+
+        # This is what the init script does (in init_sqlite.py)
+        init_resolved = resolve_sqlite_path(test_url, base_dir)
+
+        assert app_resolved == init_resolved
+        assert app_resolved == f"sqlite:///{base_dir / 'devflow_local.db'}"

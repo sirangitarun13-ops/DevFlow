@@ -13,7 +13,7 @@ The script:
 1. Creates the SQLite database file (devflow_local.db by default)
 2. Creates all tables using SQLAlchemy metadata
 3. Inserts the default role catalog
-3. Verifies foreign key constraints are enabled
+4. Verifies foreign key constraints are enabled
 
 This is a DEVELOPMENT-ONLY utility. Production deployments must use
 Alembic migrations against PostgreSQL.
@@ -31,6 +31,7 @@ from sqlalchemy import create_engine, inspect, text
 
 from backend.app.core.config import settings
 from backend.app.db.base import Base
+from backend.app.db.sqlite_path import get_sqlite_file_path, resolve_sqlite_path
 from backend.app.models import auth  # noqa: F401
 from backend.app.models import core  # noqa: F401
 from backend.app.models import traceability  # noqa: F401
@@ -38,28 +39,15 @@ from backend.app.models import rcia  # noqa: F401
 
 
 def get_database_path() -> str:
-    """Get the SQLite database file path from settings."""
+    """Get the SQLite database file path from settings using shared resolver."""
     db_url = settings.database_url
     if not db_url.startswith("sqlite"):
         raise ValueError(f"Expected SQLite URL, got: {db_url}")
 
-    # Extract path from sqlite:///./devflow_local.db or sqlite:///absolute/path
-    if db_url.startswith("sqlite:///"):
-        path = db_url[10:]  # Remove 'sqlite:///'
-        # Handle relative paths
-        if not os.path.isabs(path):
-            # Resolve relative to backend directory
-            return str(Path(__file__).parent.parent / path)
-        return path
-    elif db_url.startswith("sqlite://"):
-        # sqlite:// (memory) or sqlite://relative/path
-        path = db_url[9:]  # Remove 'sqlite://'
-        if not path or path == ":memory:":
-            return ":memory:"
-        if not os.path.isabs(path):
-            return str(Path(__file__).parent.parent / path)
-        return path
-    raise ValueError(f"Invalid SQLite URL: {db_url}")
+    path = get_sqlite_file_path(db_url)
+    if path is None:
+        raise ValueError(f"Invalid SQLite URL or in-memory database: {db_url}")
+    return path
 
 
 def initialize_database() -> bool:
@@ -70,9 +58,10 @@ def initialize_database() -> bool:
     """
     db_path = get_database_path()
 
-    # Create engine with SQLite-specific settings
+    # Create engine with SQLite-specific settings using resolved URL
+    resolved_db_url = resolve_sqlite_path(settings.database_url)
     engine = create_engine(
-        settings.database_url,
+        resolved_db_url,
         echo=settings.database_echo,
         connect_args={"check_same_thread": False},
     )

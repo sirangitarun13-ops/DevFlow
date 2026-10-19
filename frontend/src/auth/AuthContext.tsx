@@ -6,6 +6,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (fullName: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: RoleCode[]) => boolean;
   canManage: boolean;
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login: async (email, password) => { const result = await api.login(email, password); tokenStore.set(result.access_token); setUser(await api.me()); },
+      register: async (fullName, email, password) => { const result = await api.register({ full_name: fullName, email, password }); tokenStore.set(result.access_token); setUser(await api.me()); },
       logout: () => { tokenStore.clear(); setUser(null); setProjectMembersCache(new Map()); },
       hasRole: (...roles) => roles.some((role) => codes.includes(role)),
       canManage: codes.some((role) => ["admin", "project_manager", "team_lead"].includes(role)),

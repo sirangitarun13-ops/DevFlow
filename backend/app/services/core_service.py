@@ -44,6 +44,17 @@ def is_project_member(db: Session, project_id: UUID, user_id: UUID) -> bool:
     ).first() is not None
 
 
+def get_project_role(db: Session, project_id: UUID, user_id: UUID) -> str | None:
+    """Return the project-specific role for a user, if any."""
+    result = db.execute(
+        select(project_members.c.project_role).where(
+            project_members.c.project_id == project_id,
+            project_members.c.user_id == user_id,
+        )
+    ).first()
+    return result[0] if result else None
+
+
 def require_project_access(db: Session, project: Project, user: User) -> None:
     if user_has_any_role(user, {"admin"}):
         return
@@ -54,16 +65,23 @@ def require_project_access(db: Session, project: Project, user: User) -> None:
 
 def require_project_management(db: Session, project: Project, user: User) -> None:
     require_project_access(db, project, user)
-    if not user_has_any_role(user, MANAGER_ROLES):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project management permission is required")
+    if user_has_any_role(user, MANAGER_ROLES):
+        return
+    # Allow project-specific project_manager role for the project creator/member
+    if get_project_role(db, project.id, user.id) == "project_manager":
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project management permission is required")
 
 
 def require_team_management(db: Session, project: Project, user: User) -> None:
     """Require project access plus Admin or Project Manager authority."""
-
     require_project_access(db, project, user)
-    if not user_has_any_role(user, TEAM_MANAGEMENT_ROLES):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Team management permission is required")
+    if user_has_any_role(user, TEAM_MANAGEMENT_ROLES):
+        return
+    # Allow project-specific project_manager role for the project creator/member
+    if get_project_role(db, project.id, user.id) == "project_manager":
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Team management permission is required")
 
 
 def ensure_project_member(db: Session, project_id: UUID, user_id: UUID) -> None:

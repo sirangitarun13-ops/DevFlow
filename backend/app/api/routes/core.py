@@ -53,7 +53,7 @@ def accessible_project(db: Session, project_id: UUID, user: User) -> Project:
 
 
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
-def create_project(data: ProjectCreate, db: Session = Depends(get_db), user: User = Depends(require_roles("admin", "project_manager"))):
+def create_project(data: ProjectCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     validate_choice(data.status, PROJECT_STATUSES, "project status")
     return project_service.create_project(db, Project(**data.model_dump(), created_by_user_id=user.id))
 

@@ -46,15 +46,29 @@ Authentication, Phase 4 core SDLC modules, Phase 5 traceability, deterministic P
 
 The `docs/` directory contains the project context, authorized implementation roadmap, database design, API specification, RCIA design, testing strategy, and setup guide.
 
-## Backend startup
+## Backend startup (SQLite development mode)
 
     python3 -m venv .venv
     source .venv/bin/activate
     python -m pip install -r backend/requirements.txt
     cp backend/.env.example backend/.env
+    # Generate a secure JWT secret
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
+    # Edit backend/.env and set JWT_SECRET_KEY to the generated value
+    python -m backend.scripts.init_sqlite
     uvicorn backend.app.main:app --reload
 
-The root endpoint is /, the versioned health endpoint is /api/v1/health, and FastAPI's generated documentation is /docs. PostgreSQL is required for future database operations, but the current root and health checks do not connect to it.
+The root endpoint is /, the versioned health endpoint is /api/v1/health, and FastAPI's generated documentation is /docs. SQLite is used for local development; PostgreSQL is required for production.
+
+## Backend startup (PostgreSQL production mode)
+
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -r backend/requirements.txt
+    cp backend/.env.example backend/.env
+    # Edit backend/.env with PostgreSQL DATABASE_URL and JWT_SECRET_KEY
+    alembic upgrade head
+    uvicorn backend.app.main:app --reload
 
 ## Authentication
 
@@ -80,9 +94,9 @@ PDF reports are available at `/api/v1/projects/{project_id}/reports/project-summ
 
 ## Final implementation status
 
-Implemented and locally verified: authentication, role-aware authorization, project/SDLC modules, traceability, deterministic RCIA, analytics, PDF reports, frontend production build, isolated automated tests, and localhost browser CORS integration.
+Implemented and locally verified: authentication, role-aware authorization, project/SDLC modules, traceability, deterministic RCIA, analytics, PDF reports, frontend production build, isolated automated tests, localhost browser CORS integration, and **SQLite development mode**.
 
-Not verified: PostgreSQL integration execution, because PostgreSQL was unavailable in the development environment. SQLite is used only for isolated tests.
+Not verified: PostgreSQL integration execution, because PostgreSQL was unavailable in the development environment.
 
 Not implemented: AI prediction, advanced graph visualization, report persistence/history, and production deployment infrastructure.
 

@@ -172,3 +172,19 @@ def test_token_creation_and_validation_with_valid_secret(client: TestClient) -> 
     )
     assert response.status_code == 200
     assert response.json()["email"] == "client@example.com"
+
+
+def test_registration_rejects_short_password(client: TestClient) -> None:
+    payload = register_payload()
+    payload["password"] = "short"
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 422
+    assert any("at least 8 characters" in str(e.get("msg", "")) for e in response.json()["detail"])
+
+
+def test_registration_accepts_minimum_length_password(client: TestClient) -> None:
+    payload = register_payload()
+    payload["password"] = "a" * 8
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+    assert response.json()["roles"][0]["code"] == "client"

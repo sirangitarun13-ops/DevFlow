@@ -27,11 +27,12 @@ def database(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         roles = {code: Role(code=code, name=code.replace("_", " ").title()) for code in ("admin", "project_manager", "team_lead", "developer", "tester", "client")}
+        admin = User(full_name="Admin", email="admin@example.com", password_hash=hash_password("password-123"), roles=[roles["admin"]])
         manager = User(full_name="Manager", email="manager@example.com", password_hash=hash_password("password-123"), roles=[roles["project_manager"]])
         developer = User(full_name="Developer", email="developer@example.com", password_hash=hash_password("password-123"), roles=[roles["developer"]])
         tester = User(full_name="Tester", email="tester@example.com", password_hash=hash_password("password-123"), roles=[roles["tester"]])
         client_user = User(full_name="Client", email="client@example.com", password_hash=hash_password("password-123"), roles=[roles["client"]])
-        db.add_all([*roles.values(), manager, developer, tester, client_user]); db.commit()
+        db.add_all([*roles.values(), admin, manager, developer, tester, client_user]); db.commit()
     monkeypatch.setattr(settings, "jwt_secret_key", "phase-four-test-secret")
     yield
     Base.metadata.drop_all(engine)
@@ -96,12 +97,232 @@ def test_core_crud_relationships_pagination_and_access(client: TestClient) -> No
 
 def test_validation_and_role_restrictions(client: TestClient) -> None:
     client_headers = headers("client@example.com")
-    assert client.post("/api/v1/projects", headers=client_headers, json={"name": "Nope"}).status_code == 403
+    # Any authenticated user can now create a project
+    project = client.post("/api/v1/projects", headers=client_headers, json={"name": "Client Created"}).json()
+    assert project["name"] == "Client Created"
     manager_headers = headers("manager@example.com")
     project = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Validated"}).json()
     bad_requirement = client.post(f"/api/v1/projects/{project['id']}/requirements", headers=manager_headers, json={"requirement_key": "BAD", "title": "Bad", "description": "Bad", "requirement_type": "unknown", "priority": "high"})
     assert bad_requirement.status_code == 422
     assert client.get(f"/api/v1/projects/{project['id']}/requirements", headers=client_headers).status_code == 403
+
+
+def test_project_creator_role_assignment(client: TestClient) -> None:
+    client_headers = headers("client@example.com")
+    project = client.post("/api/v1/projects", headers=client_headers, json={"name": "Creator Test"}).json()
+    assert project["name"] == "Creator Test"
+    project_id = project["id"]
+    creator_id = project["created_by_user_id"]
+
+    with SessionLocal() as db:
+        from backend.app.models.core import project_members
+        member = db.execute(
+            project_members.select().where(
+                project_members.c.project_id == UUID(project_id),
+                project_members.c.user_id == UUID(creator_id)
+            )
+        ).first()
+        assert member is not None
+        assert member.project_role == "project_manager"
+
+
+def test_project_creator_global_role_preservation(client: TestClient) -> None:
+    client_headers = headers("client@example.com")
+    project = client.post("/api/v1/projects", headers=client_headers, json={"name": "Global Role Test"}).json()
+
+    with SessionLocal() as db:
+        from backend.app.models.auth import User
+        user = db.scalar(select(User).where(User.id == UUID(project["created_by_user_id"])))
+        assert user is not None
+        # Creator should have client role globally, not project_manager globally
+        global_roles = [role.code for role in user.roles]
+        assert "client" in global_roles
+        assert "project_manager" not in global_roles
+
+
+def test_project_isolation_between_managers(client: TestClient) -> None:
+    manager_headers = headers("manager@example.com")
+    other_headers = headers("developer@example.com")
+
+    project1 = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Project One"}).json()
+    project2 = client.post("/api/v1/projects", headers=other_headers, json={"name": "Project Two"}).json()
+
+    project1_id = project1["id"]
+    project2_id = project2["id"]
+    manager_id = project1["created_by_user_id"]
+    other_id = project2["created_by_user_id"]
+
+    with SessionLocal() as db:
+        from backend.app.models.auth import User
+        manager = db.scalar(select(User).where(User.id == UUID(manager_id)))
+        other = db.scalar(select(User).where(User.id == UUID(other_id)))
+
+        developer_id = db.scalar(select(User.id).where(User.email == "developer@example.com"))
+        assert developer_id is not None
+
+        # Manager of project1 should be able to access project1
+        assert client.post(f"/api/v1/projects/{project1_id}/requirements",
+                         headers=manager_headers,
+                         json={"requirement_key": "REQ-1", "title": "Test", "description": "Test",
+                               "requirement_type": "functional", "priority": "high"}).status_code == 201
+
+        # Manager of project1 should NOT be able to manage project2 solely based on their project_manager role in project1
+        assert client.post(f"/api/v1/projects/{project2_id}/requirements",
+                         headers=manager_headers,
+                         json={"requirement_key": "REQ-2", "title": "Test", "description": "Test",
+                               "requirement_type": "functional", "priority": "high"}).status_code == 403
+
+        # Other user should be able to manage their own project
+        assert client.post(f"/api/v1/projects/{project2_id}/requirements",
+                         headers=other_headers,
+                         json={"requirement_key": "REQ-2", "title": "Test", "description": "Test",
+                               "requirement_type": "functional", "priority": "high"}).status_code == 201
+
+
+def test_administrative_access(client: TestClient) -> None:
+    admin_headers = headers("admin@example.com")
+    client_headers = headers("client@example.com")
+    manager_headers = headers("manager@example.com")
+
+    # Admin can access any project without membership
+    # Create project as manager
+    project = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Admin Test"}).json()
+    project_id = project["id"]
+
+    # Admin can access manager's project even without membership
+    assert client.get(f"/api/v1/projects/{project_id}", headers=admin_headers).status_code == 200
+
+    # Admin can create and manage projects globally
+    admin_project = client.post("/api/v1/projects", headers=admin_headers, json={"name": "Admin's Project"}).json()
+    admin_project_id = admin_project["id"]
+    assert client.get(f"/api/v1/projects/{admin_project_id}", headers=admin_headers).status_code == 200
+
+    # Client cannot access admin's project
+    assert client.get(f"/api/v1/projects/{admin_project_id}", headers=client_headers).status_code == 403
+
+    # Client can only access their own projects
+    client_project = client.post("/api/v1/projects", headers=client_headers, json={"name": "Client's Project"}).json()
+    client_project_id = client_project["id"]
+    assert client.get(f"/api/v1/projects/{client_project_id}", headers=client_headers).status_code == 200
+
+
+def test_admin_cross_project_access(client: TestClient) -> None:
+    admin_headers = headers("admin@example.com")
+    manager_headers = headers("manager@example.com")
+    developer_headers = headers("developer@example.com")
+
+    # Admin creates a project without being a member
+    admin_project = client.post("/api/v1/projects", headers=admin_headers, json={"name": "Admin's Project"}).json()
+    admin_project_id = admin_project["id"]
+
+    # Manager creates a different project
+    manager_project = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Manager's Project"}).json()
+    manager_project_id = manager_project["id"]
+
+    # Admin can access both projects
+    assert client.get(f"/api/v1/projects/{admin_project_id}", headers=admin_headers).status_code == 200
+    assert client.get(f"/api/v1/projects/{manager_project_id}", headers=admin_headers).status_code == 200
+
+    # Admin can manage both projects
+    assert client.post(f"/api/v1/projects/{admin_project_id}/requirements",
+                     headers=admin_headers,
+                     json={"requirement_key": "REQ-1", "title": "Test", "description": "Test",
+                           "requirement_type": "functional", "priority": "high"}).status_code == 201
+
+    assert client.post(f"/api/v1/projects/{manager_project_id}/requirements",
+                     headers=admin_headers,
+                     json={"requirement_key": "REQ-2", "title": "Test", "description": "Test",
+                           "requirement_type": "functional", "priority": "high"}).status_code == 201
+
+
+def test_non_member_cannot_access_project(client: TestClient) -> None:
+    manager_headers = headers("manager@example.com")
+    developer_headers = headers("developer@example.com")
+
+    # Manager creates a project and adds developer as member
+    project = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Manager's Project"}).json()
+    project_id = project["id"]
+
+    with SessionLocal() as db:
+        from backend.app.models.auth import User
+        from backend.app.models.core import project_members
+        from uuid import UUID
+
+        developer_id = db.scalar(select(User.id).where(User.email == "developer@example.com"))
+        db.execute(project_members.insert().values(project_id=UUID(project_id), user_id=developer_id, project_role="developer"))
+        db.commit()
+
+    # Developer can access their own project (they are a member)
+    assert client.get(f"/api/v1/projects/{project_id}", headers=developer_headers).status_code == 200
+
+    # Create a new user that is NOT a member of the manager's project
+    with SessionLocal() as db:
+        from backend.app.models.auth import User, Role
+        from backend.app.services.auth_service import hash_password
+        from uuid import uuid4
+
+        # Find existing tester role to reuse
+        tester_role = db.scalar(select(Role).where(Role.code == "tester"))
+        assert tester_role is not None, "Tester role not found in test database"
+
+        # Create a new user with tester role
+        tester_user = User(full_name="Tester", email="tester2@example.com", password_hash=hash_password("password-123"), roles=[tester_role])
+        db.add(tester_user)
+        db.commit()
+
+    tester_headers = headers("tester2@example.com")
+
+    # Tester (no membership) cannot access manager's project
+    assert client.get(f"/api/v1/projects/{project_id}", headers=tester_headers).status_code == 403
+
+    # Tester cannot manage manager's project
+    assert client.post(f"/api/v1/projects/{project_id}/requirements",
+                     headers=tester_headers,
+                     json={"requirement_key": "REQ-1", "title": "Test", "description": "Test",
+                           "requirement_type": "functional", "priority": "high"}).status_code == 403
+
+
+def test_project_creator_global_role_preservation(client: TestClient) -> None:
+    client_headers = headers("client@example.com")
+    project = client.post("/api/v1/projects", headers=client_headers, json={"name": "Global Role Test"}).json()
+
+    with SessionLocal() as db:
+        from backend.app.models.auth import User
+        user = db.scalar(select(User).where(User.id == UUID(project["created_by_user_id"])))
+        assert user is not None
+
+        # Clear existing roles to test fresh creation
+        global_roles = [role.code for role in user.roles]
+
+        # Creator should have client role globally, not project_manager globally
+        assert "client" in global_roles
+        assert "project_manager" not in global_roles
+
+        # Verify project-specific role does not affect global role membership
+        # by checking that the user has the exact expected roles
+        assert len(global_roles) == 1
+        assert global_roles[0] == "client"
+
+
+def test_role_combinations(client: TestClient) -> None:
+    manager_headers = headers("manager@example.com")
+    developer_headers = headers("developer@example.com")
+
+    # Manager creates a project (has global project_manager role + project-specific project_manager role)
+    project = client.post("/api/v1/projects", headers=manager_headers, json={"name": "Manager Global Role"}).json()
+    project_id = project["id"]
+
+    # Manager should be able to manage their project (has global project_manager role)
+    assert client.post(f"/api/v1/projects/{project_id}/requirements",
+                     headers=manager_headers,
+                     json={"requirement_key": "REQ-1", "title": "Test", "description": "Test",
+                           "requirement_type": "functional", "priority": "high"}).status_code == 201
+
+    # Developer cannot manage manager's project (doesn't have global manager role, no project_manager role)
+    assert client.post(f"/api/v1/projects/{project_id}/requirements",
+                     headers=developer_headers,
+                     json={"requirement_key": "REQ-2", "title": "Test", "description": "Test",
+                           "requirement_type": "functional", "priority": "high"}).status_code == 403
 
 
 def test_project_role_and_duplicate_membership_validation(client: TestClient) -> None:

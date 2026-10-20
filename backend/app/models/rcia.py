@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, Text, Uuid, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base
@@ -70,7 +71,7 @@ class ImpactAnalysisResult(Base):
     artifact_type: Mapped[str] = mapped_column(String(30), nullable=False)
     artifact_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     impact_category: Mapped[str] = mapped_column(String(20), nullable=False, default="direct")
-    relationship_path: Mapped[list] = mapped_column(JSON, nullable=True)
+    relationship_path: Mapped[list] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
 
     analysis: Mapped[ImpactAnalysis] = relationship(back_populates="results")

@@ -68,5 +68,6 @@ export const api = {
   runAnalysis: (projectId: string, changeRequestId: string) => request<ImpactAnalysis>(`/projects/${projectId}/change-requests/${changeRequestId}/analyses`, json("POST")),
   analysis: (projectId: string, id: string) => request<ImpactAnalysis>(`/projects/${projectId}/analyses/${id}`),
   analysisResults: (projectId: string, id: string) => request<ImpactResult[]>(`/projects/${projectId}/analyses/${id}/results`),
-  report: (projectId: string, type: "project-summary" | "sdlc-status", changeRequestId?: string) => download(changeRequestId ? `/projects/${projectId}/reports/change-impact/${changeRequestId}` : `/projects/${projectId}/reports/${type}`),
+  report: (projectId: string, type: "project-summary" | "sdlc-status") => download(`/projects/${projectId}/reports/${type}`),
+  changeImpactReport: (projectId: string, changeRequestId: string) => download(`/projects/${projectId}/reports/change-impact/${changeRequestId}`),
 };

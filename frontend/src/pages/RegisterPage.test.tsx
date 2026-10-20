@@ -99,14 +99,11 @@ describe("RegisterPage", () => {
 
   it("calls register API on valid submission and redirects on success", async () => {
     mockApi.register.mockResolvedValue({
-      access_token: "test-token",
-      user: {
-        id: "123",
-        full_name: "Jane Doe",
-        email: "jane@example.com",
-        account_status: "active",
-        roles: [{ code: "client", name: "Client" }],
-      },
+      id: "123",
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      account_status: "active",
+      roles: [{ code: "client", name: "Client" }],
     });
 
     renderWithRouter(<RegisterPage />);
@@ -153,7 +150,7 @@ describe("RegisterPage", () => {
   });
 
   it("disables submit button during submission", async () => {
-    let resolvePromise: (value: { access_token: string; user: { id: string; full_name: string; email: string; account_status: string; roles: Array<{ code: "admin" | "project_manager" | "team_lead" | "developer" | "tester" | "client"; name: string }> } }) => void;
+    let resolvePromise: (value: { id: string; full_name: string; email: string; account_status: string; roles: Array<{ code: "admin" | "project_manager" | "team_lead" | "developer" | "tester" | "client"; name: string }> }) => void;
     mockApi.register.mockImplementation(() => new Promise((resolve) => { resolvePromise = resolve; }));
 
     renderWithRouter(<RegisterPage />);
@@ -170,8 +167,7 @@ describe("RegisterPage", () => {
     expect(screen.getByRole("button", { name: /creating account/i })).toBeDisabled();
 
     resolvePromise!({
-      access_token: "test-token",
-      user: { id: "123", full_name: "Jane Doe", email: "jane@example.com", account_status: "active", roles: [{ code: "client", name: "Client" }] },
+      id: "123", full_name: "Jane Doe", email: "jane@example.com", account_status: "active", roles: [{ code: "client", name: "Client" }],
     });
 
     await waitFor(() => {

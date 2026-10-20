@@ -38,7 +38,7 @@ export default function LoginPage() {
         {error && <div className="form-error">{error}</div>}
         <label>Email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" /></label>
         <label>Password<input required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" /></label>
-        <button className="primary-button wide" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        <button className="primary-button wide" disabled={busy} type="submit">{busy ? "Signing in…" : "Sign in"}</button>
         <small className="muted center">Your role controls available navigation and actions.</small>
         <p className="muted center">Don&apos;t have an account? <Link to="/register">Create an account</Link></p>
       </form>

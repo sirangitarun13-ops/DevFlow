@@ -86,7 +86,6 @@ export default function RegisterPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
-            minLength={8}
           />
         </label>
         <label>
@@ -97,10 +96,9 @@ export default function RegisterPage() {
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="••••••••"
-            minLength={8}
           />
         </label>
-        <button className="primary-button wide" disabled={busy}>
+        <button className="primary-button wide" disabled={busy} type="submit">
           {busy ? "Creating account…" : "Create account"}
         </button>
         <p className="muted center">

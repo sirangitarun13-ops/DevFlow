@@ -48,9 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProjectMembers = async (projectId: string): Promise<ProjectMember[]> => {
     const cached = projectMembersCache.get(projectId);
     if (cached) return cached;
-    const members = await api.projectMembers(projectId);
-    setProjectMembersCache((prev) => new Map(prev).set(projectId, members));
-    return members;
+    try {
+      const members = await api.projectMembers(projectId);
+      setProjectMembersCache((prev) => new Map(prev).set(projectId, members));
+      return members;
+    } catch {
+      // On failure (e.g., 403), return empty array so canManageProject safely returns false
+      // without unhandled promise rejection. Do not grant permissions on lookup failure.
+      return [];
+    }
   };
 
   const getProjectRole = (projectId: string): string | null => {
@@ -83,8 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       user,
       loading,
-      login: async (email, password) => { const result = await api.login(email, password); tokenStore.set(result.access_token); setUser(await api.me()); },
-      register: async (fullName, email, password) => { const result = await api.register({ full_name: fullName, email, password }); tokenStore.set(result.access_token); setUser(await api.me()); },
+      login: async (email, password) => { const result = await api.login(email, password); tokenStore.set(result.access_token); setUser(await api.me(result.access_token)); },
+      register: async (fullName, email, password) => { await api.register({ full_name: fullName, email, password }); },
       logout: () => { tokenStore.clear(); setUser(null); setProjectMembersCache(new Map()); },
       hasRole: (...roles) => roles.some((role) => codes.includes(role)),
       canManage: codes.some((role) => ["admin", "project_manager", "team_lead"].includes(role)),

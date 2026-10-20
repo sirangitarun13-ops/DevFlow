@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, ErrorState, LoadingState, Metric, PageTitle } 
 
 export default function ProjectDetailPage() {
   const { id = "" } = useParams();
-  const { canManageProject } = useAuth();
+  const { canManageProject, fetchProjectMembers } = useAuth();
   const canManage = canManageProject(id);
   const [project, setProject] = useState<Project | null>(null);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -25,6 +25,10 @@ export default function ProjectDetailPage() {
         setTests(tc);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Unable to load project"));
+    // Populate project members cache for canManageProject check
+    if (id) {
+      void fetchProjectMembers(id);
+    }
   }, [id]);
   if (error) return <ErrorState message={error} />;
   if (!project) return <LoadingState />;

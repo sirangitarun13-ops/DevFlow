@@ -8,7 +8,7 @@ import { Badge, Card, EmptyState, ErrorState, LoadingState, Metric, PageTitle } 
 function isDeveloper(member: ProjectMember) { return member.roles.some((role) => role.code === "developer"); }
 
 export default function TeamPage() {
-  const { canManageProject } = useAuth();
+  const { canManageProject, fetchProjectMembers } = useAuth();
   const { selectedProject: project } = useProjects();
   const canManageTeam = project ? canManageProject(project.id) : false;
   const [members, setMembers] = useState<ProjectMember[]>([]);
@@ -43,7 +43,14 @@ export default function TeamPage() {
     catch (value) { setDirectoryError(value instanceof Error ? value.message : "Unable to load available developers."); }
     finally { setDirectoryLoading(false); }
   };
-  useEffect(() => { void loadMembers(); setSelectedDeveloper(null); setDeveloperTasks([]); }, [project?.id]);
+  useEffect(() => {
+    void loadMembers();
+    setSelectedDeveloper(null);
+    setDeveloperTasks([]);
+    if (project) {
+      void fetchProjectMembers(project.id);
+    }
+  }, [project?.id, fetchProjectMembers]);
   useEffect(() => { if (showForm) void loadDevelopers(""); }, [showForm, project?.id, canManageTeam]);
 
   const developerMembers = useMemo(() => members.filter(isDeveloper), [members]);

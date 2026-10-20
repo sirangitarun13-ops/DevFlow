@@ -33,6 +33,10 @@ reports/
 uploads/
 *.log
 
+# Playwright artifacts
+frontend/playwright-report/
+frontend/test-results/
+
 # SQLite development databases
 *.db
 *.db-journal

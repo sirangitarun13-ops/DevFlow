@@ -41,6 +41,7 @@ from backend.app.services.auth_service import hash_password
 DEMO_PASSWORD = "password123"
 DEMO_PROJECT_NAME = "Demo Project"
 DEMO_REQUIREMENT_KEY = "RCIA-1"
+DEMO_REQUIREMENT_2_KEY = "RCIA-2"
 DEMO_MANAGER_EMAIL = "pm@example.com"
 DEMO_MANAGER_NAME = "Demo Project Manager"
 
@@ -154,6 +155,34 @@ def get_or_create_requirement(db: Session, project: Project, manager: User) -> R
         description="Implement secure user authentication with JWT tokens, password hashing, and session management.",
         requirement_type="functional",
         priority="high",
+        status="approved",
+        version=1,
+        created_by_user_id=manager.id,
+        updated_by_user_id=manager.id,
+    )
+    db.add(req)
+    db.flush()
+    return req
+
+
+def get_or_create_requirement_2(db: Session, project: Project, manager: User) -> Requirement:
+    """Get existing requirement RCIA-2 or create it."""
+    req = db.scalar(
+        select(Requirement).where(
+            Requirement.project_id == project.id,
+            Requirement.requirement_key == DEMO_REQUIREMENT_2_KEY,
+        )
+    )
+    if req:
+        return req
+
+    req = Requirement(
+        project_id=project.id,
+        requirement_key=DEMO_REQUIREMENT_2_KEY,
+        title="Account Recovery Flow",
+        description="Allow users to recover their accounts via email verification and security questions.",
+        requirement_type="functional",
+        priority="medium",
         status="approved",
         version=1,
         created_by_user_id=manager.id,
@@ -310,19 +339,19 @@ def ensure_traceability_link(
     return link
 
 
-def create_traceability_links(db: Session, project: Project, manager: User, requirement: Requirement, task: Task, direct_bug: Bug, indirect_bug: Bug, test_case: TestCase) -> int:
+def create_traceability_links(db: Session, project: Project, manager: User, requirement: Requirement, requirement_2: Requirement, task: Task, direct_bug: Bug, indirect_bug: Bug, test_case: TestCase) -> int:
     """Create all required traceability links. Returns count of newly created links."""
     created = 0
 
-    # 1. Requirement → Task (implements)
+    # 1. Requirement RCIA-1 → Task (implements)
     if ensure_traceability_link(db, project, manager, "requirement", requirement.id, "task", task.id, "implements"):
         created += 1
 
-    # 2. Requirement → Direct Bug (affects)
+    # 2. Requirement RCIA-1 → Direct Bug (affects)
     if ensure_traceability_link(db, project, manager, "requirement", requirement.id, "bug", direct_bug.id, "affects"):
         created += 1
 
-    # 3. Requirement → Test Case (validates)
+    # 3. Requirement RCIA-1 → Test Case (validates)
     if ensure_traceability_link(db, project, manager, "requirement", requirement.id, "test_case", test_case.id, "validates"):
         created += 1
 
@@ -332,6 +361,11 @@ def create_traceability_links(db: Session, project: Project, manager: User, requ
 
     # 5. Indirect Bug → Task (affects) - cycle for cycle detection test
     if ensure_traceability_link(db, project, manager, "bug", indirect_bug.id, "task", task.id, "affects"):
+        created += 1
+
+    # 6. Requirement RCIA-2 depends_on Requirement RCIA-1
+    # RCIA-2 (Account Recovery Flow) depends on RCIA-1 (User Authentication Flow)
+    if ensure_traceability_link(db, project, manager, "requirement", requirement_2.id, "requirement", requirement.id, "depends_on"):
         created += 1
 
     return created
@@ -398,21 +432,24 @@ def seed_demo_data() -> dict:
             # Create/reuse demo project
             project = get_or_create_demo_project(db, manager)
 
-            # Create/reuse requirement
+            # Create/reuse requirement RCIA-1
             requirement = get_or_create_requirement(db, project, manager)
 
-            # Create/reuse artifacts
+            # Create/reuse requirement RCIA-2 (depends on RCIA-1)
+            requirement_2 = get_or_create_requirement_2(db, project, manager)
+
+            # Create/reuse artifacts for RCIA-1
             task = get_or_create_task(db, project, requirement, manager)
             direct_bug = get_or_create_direct_bug(db, project, requirement, manager)
             indirect_bug = get_or_create_indirect_bug(db, project, task, manager)
             test_case = get_or_create_test_case(db, project, requirement, manager)
 
-            # Create traceability links
+            # Create traceability links (including requirement-to-requirement dependency)
             links_created = create_traceability_links(
-                db, project, manager, requirement, task, direct_bug, indirect_bug, test_case
+                db, project, manager, requirement, requirement_2, task, direct_bug, indirect_bug, test_case
             )
 
-            # Create change request
+            # Create change request for RCIA-1
             change_request = get_or_create_change_request(db, project, requirement, manager)
 
             db.commit()
@@ -430,6 +467,8 @@ def seed_demo_data() -> dict:
                 "manager_name": manager.full_name,
                 "requirement_key": requirement.requirement_key,
                 "requirement_id": str(requirement.id),
+                "requirement_2_key": requirement_2.requirement_key,
+                "requirement_2_id": str(requirement_2.id),
                 "task_id": str(task.id),
                 "direct_bug_id": str(direct_bug.id),
                 "indirect_bug_id": str(indirect_bug.id),
@@ -464,7 +503,8 @@ def main() -> int:
         print("\n✓ Demo data seeded successfully!")
         print(f"  Project: {summary['project_name']} (ID: {summary['project_id']})")
         print(f"  Manager: {summary['manager_name']} ({summary['manager_email']})")
-        print(f"  Requirement: {summary['requirement_key']} (ID: {summary['requirement_id']})")
+        print(f"  Requirement 1: {summary['requirement_key']} (ID: {summary['requirement_id']})")
+        print(f"  Requirement 2: {summary['requirement_2_key']} (ID: {summary['requirement_2_id']})")
         print(f"  Artifacts: 1 task, 2 bugs (1 direct, 1 indirect), 1 test case")
         print(f"  Traceability links created: {summary['links_created']}")
         print(f"  Change request: {summary['change_request_id']}")

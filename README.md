@@ -1,105 +1,444 @@
 # DevFlow
 
-DevFlow is an intelligent Software Development Lifecycle (SDLC) analytics and Requirement Change Impact Analysis platform. It is planned as a web-based application for centralizing project artifacts and making the consequences of requirement changes visible across related work.
+DevFlow is an intelligent Software Development Lifecycle (SDLC) analytics and Requirement Change Impact Analysis (RCIA) platform. It is a web-based application for centralizing project artifacts and making the consequences of requirement changes visible across related work.
 
-## Problem statement
+## Problem Statement
 
 Software teams commonly manage requirements, sprints, tasks, bugs, and testing activities in separate or loosely connected records. When a requirement changes, identifying affected tasks, developers, bugs, test cases, and sprint schedules can require manual analysis. This increases the risk of missed dependencies, delayed communication, inefficient planning, and reduced project visibility.
 
-## Objectives
+## Objectives and Key Features
 
-- Provide an integrated platform for SDLC management.
-- Maintain traceability among requirements, tasks, bugs, test cases, and sprints.
-- Automate Requirement Change Impact Analysis (RCIA).
-- Improve project visibility through engineering analytics and dashboards.
-- Support Agile planning, monitoring, and collaboration.
+- **Integrated SDLC Platform**: Unified management of projects, requirements, sprints, tasks, bugs, and test cases
+- **Traceability**: Maintain bidirectional links among requirements, tasks, bugs, test cases, sprints, and team members
+- **Requirement Change Impact Analysis (RCIA)**: Deterministic impact propagation through traceability graph with direct/indirect classification
+- **Engineering Analytics**: Project progress, workload distribution, and requirement coverage metrics
+- **Dynamic PDF Reports**: Project summary, SDLC status, and change-impact reports generated on demand
+- **Role-Aware Access Control**: Six roles (Admin, Project Manager, Team Lead, Developer, Tester, Client) with project-scoped permissions
+- **Authentication**: JWT-based authentication with registration, login, and secure password hashing (Argon2)
 
-## Project scope and implemented foundation
+## Current Capabilities and Scope
 
-- Authentication and role management
-- Project, requirement, sprint, task, bug, and test-case management
-- Requirement traceability and graph visualization
-- Requirement Change Impact Analysis
-- Analytics dashboard
-- PDF report generation
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Authentication & Authorization | Implemented | JWT, role-based, project-scoped |
+| Project & SDLC Management | Implemented | Requirements, sprints, tasks, bugs, test cases |
+| Traceability Links | Implemented | Validated, project-isolated |
+| RCIA Engine | Implemented | Deterministic, graph-based, no AI |
+| Analytics Dashboard | Implemented | Progress, workload, coverage |
+| PDF Report Generation | Implemented | ReportLab, dynamic (not persisted) |
+| Frontend (React + Vite) | Implemented | Role-aware routing, protected pages |
+| E2E Tests (Playwright) | Implemented | Isolated backend, CORS verified |
+| SQLite Development Mode | Implemented | No PostgreSQL required locally |
+| PostgreSQL Production Mode | Designed | Migrations ready, not verified in CI |
+| AI Prediction | Not Implemented | Out of scope |
+| Advanced Graph Visualization | Not Implemented | Basic React Flow integration only |
+| Report Persistence/History | Not Implemented | Reports generated on demand |
+| Production Deployment | Not Implemented | Docker, CI/CD not included |
 
-Authentication, Phase 4 core SDLC modules, Phase 5 traceability, deterministic Phase 6 RCIA, the Phase 7 role-aware frontend foundation, Phase 8 project analytics, and Phase 9 dynamic PDF reports are implemented. AI prediction remains outside the current scope.
+## Technology Stack
 
-## Technology stack
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19, TypeScript, Vite 7 |
+| **Styling** | Tailwind CSS 3.4 |
+| **State/Routing** | React Router 7, React Context |
+| **Graph Visualization** | React Flow 11 |
+| **Charts** | Recharts (via analytics components) |
+| **Testing (Frontend)** | Vitest, Playwright |
+| **Backend** | FastAPI 0.115, Python 3.11+ |
+| **Database ORM** | SQLAlchemy 2.0 |
+| **Database (Dev)** | SQLite (file-based, WAL mode) |
+| **Database (Prod)** | PostgreSQL 15+ with psycopg 3 |
+| **Migrations** | Alembic 1.14 |
+| **Authentication** | JWT (PyJWT), Argon2 (argon2-cffi) |
+| **Rate Limiting** | slowapi |
+| **PDF Generation** | ReportLab 4.2 |
+| **Testing (Backend)** | pytest 8.3, httpx |
+| **Configuration** | pydantic-settings 2.7 |
 
-| Layer | Planned technology |
-| --- | --- |
-| Frontend | React |
-| Styling | Tailwind CSS |
-| Backend | FastAPI |
-| Database | PostgreSQL |
-| Authentication | JWT |
-| Graph visualization | React Flow |
-| Charts | Recharts |
-| API style | REST with JSON |
+## System Architecture
 
-## Current implementation phase
+```mermaid
+graph TB
+    subgraph "Frontend (React + Vite)"
+        UI[Browser UI]
+        API_CLIENT[API Client]
+        AUTH_CTX[Auth Context]
+        PAGES[Pages: Dashboard, Requirements, RCIA, Analytics, Reports]
+    end
 
-**Phase 10 - Testing, Stabilization & Final Documentation.** This repository includes authenticated, project-scoped backend workflows, deterministic analytics aggregation, dynamic ReportLab PDF reports, and a React frontend for role-aware dashboards, requirements, change requests, traceability, RCIA, project insights, and report downloads. AI prediction, advanced graph visualization, report persistence/history, and production deployment are not implemented.
+    subgraph "Backend (FastAPI)"
+        API[FastAPI App]
+        AUTH[Auth Routes]
+        CORE[Core SDLC Routes]
+        TRACE[Traceability Routes]
+        RCIA[RCIA Routes]
+        ANALYTICS[Analytics Routes]
+        REPORTS[Reports Routes]
+        USERS[User Routes]
+        SERVICES[Service Layer]
+        MODELS[SQLAlchemy Models]
+    end
 
-## Documentation
+    subgraph "Database"
+        SQLITE[(SQLite Dev)]
+        PG[(PostgreSQL Prod)]
+    end
 
-The `docs/` directory contains the project context, authorized implementation roadmap, database design, API specification, RCIA design, testing strategy, and setup guide.
+    UI --> API_CLIENT
+    API_CLIENT --> AUTH_CTX
+    AUTH_CTX --> PAGES
+    PAGES --> API_CLIENT
+    API_CLIENT -.->|HTTPS/REST| API
+    API --> AUTH
+    API --> CORE
+    API --> TRACE
+    API --> RCIA
+    API --> ANALYTICS
+    API --> REPORTS
+    API --> USERS
+    CORE --> SERVICES
+    TRACE --> SERVICES
+    RCIA --> SERVICES
+    ANALYTICS --> SERVICES
+    REPORTS --> SERVICES
+    SERVICES --> MODELS
+    MODELS -.-> SQLITE
+    MODELS -.-> PG
+```
 
-## Backend startup (SQLite development mode)
+## Major Modules and Responsibilities
 
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python -m pip install -r backend/requirements.txt
-    cp backend/.env.example backend/.env
-    # Generate a secure JWT secret
-    python -c "import secrets; print(secrets.token_urlsafe(32))"
-    # Edit backend/.env and set JWT_SECRET_KEY to the generated value
-    python -m backend.scripts.init_sqlite
-    uvicorn backend.app.main:app --reload
+### Backend (`backend/app/`)
 
-The root endpoint is /, the versioned health endpoint is /api/v1/health, and FastAPI's generated documentation is /docs. SQLite is used for local development; PostgreSQL is required for production.
+| Module | Responsibility |
+|--------|----------------|
+| `api/routes/auth.py` | Registration, login, current user, JWT token management |
+| `api/routes/core.py` | Projects, requirements, sprints, tasks, bugs, test cases, milestones |
+| `api/routes/traceability.py` | Traceability link CRUD with validation |
+| `api/routes/rcia.py` | Change requests, impact analysis execution, result retrieval |
+| `api/routes/analytics.py` | Project summary metrics (progress, workload, coverage) |
+| `api/routes/reports.py` | Dynamic PDF generation (project summary, SDLC status, change impact) |
+| `api/routes/users.py` | User listing, project membership management |
+| `services/` | Business logic, authorization, RCIA engine, report builders |
+| `models/` | SQLAlchemy ORM models for all entities |
+| `schemas/` | Pydantic request/response schemas |
+| `core/config.py` | Environment-backed settings with validation |
+| `core/rate_limit.py` | SlowAPI rate limiter for auth endpoints |
+| `db/` | Database session, SQLite path resolver, base model |
 
-## Backend startup (PostgreSQL production mode)
+### Frontend (`frontend/src/`)
 
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python -m pip install -r backend/requirements.txt
-    cp backend/.env.example backend/.env
-    # Edit backend/.env with PostgreSQL DATABASE_URL and JWT_SECRET_KEY
-    alembic upgrade head
-    uvicorn backend.app.main:app --reload
+| Module | Responsibility |
+|--------|----------------|
+| `pages/` | Page components for each route (Dashboard, Requirements, Tasks, RCIA, Analytics, Reports, Team) |
+| `api/client.ts` | Axios instance with JWT interceptor |
+| `api/types.ts` | TypeScript interfaces matching backend schemas |
+| `auth/AuthContext.tsx` | Global auth state, login/logout, token persistence |
+| `layout.tsx` | Role-aware navigation, protected routes |
+| `components/` | Reusable UI components (tables, forms, charts, React Flow) |
 
-## Authentication
+## Repository Directory Structure
 
-Registration is available at /api/v1/auth/register and assigns the safe default Client role. Login is available at /api/v1/auth/login and returns a short-lived JWT bearer token. The current user is available at /api/v1/auth/me. Set JWT_SECRET_KEY in backend/.env; do not commit credentials or secrets.
+```text
+DevFlow/
+├── README.md                    # This file
+├── .gitignore                   # Root ignore rules
+├── .env.example                 # Reference: all environment variables
+├── alembic.ini                  # Alembic configuration (PostgreSQL default)
+├── pytest.ini                   # Pytest configuration
+├── requirements.txt             # Root requirements (empty, use backend/)
+├── alembic/                     # Database migrations
+│   ├── env.py                   # Migration environment (reads backend/.env)
+│   ├── script.py.mako           # Migration template
+│   └── versions/                # Migration scripts (6 revisions)
+├── backend/
+│   ├── .gitignore               # Backend-specific ignores
+│   ├── .env.example             # Backend environment template
+│   ├── requirements.txt         # Python dependencies
+│   ├── README.md                # Backend-specific docs
+│   ├── app/
+│   │   ├── main.py              # FastAPI application entry point
+│   │   ├── api/                 # API route modules
+│   │   ├── core/                # Config, rate limiting, security
+│   │   ├── db/                  # Database session, base model
+│   │   ├── models/              # SQLAlchemy models
+│   │   ├── schemas/             # Pydantic schemas
+│   │   └── services/            # Business logic services
+│   └── scripts/
+│       ├── init_sqlite.py       # SQLite schema + role seed (dev only)
+│       ├── seed_demo.py         # Demo data seed (idempotent)
+│       ├── seed_review_demo.py  # Extended demo data for review
+│       └── start_e2e_backend.py # Isolated backend for E2E tests
+├── frontend/
+│   ├── .gitignore               # Frontend-specific ignores
+│   ├── .env.example             # Frontend environment template
+│   ├── package.json             # npm dependencies and scripts
+│   ├── package-lock.json        # Locked dependencies
+│   ├── tsconfig.json            # TypeScript config
+│   ├── vite.config.ts           # Vite config
+│   ├── tailwind.config.js       # Tailwind config
+│   ├── postcss.config.js        # PostCSS config
+│   ├── index.html               # Entry HTML
+│   ├── src/                     # React application source
+│   │   ├── main.tsx             # App bootstrap
+│   │   ├── App.tsx              # Root component, routing
+│   │   ├── api/                 # API client and types
+│   │   ├── auth/                # Auth context
+│   │   ├── pages/               # Page components
+│   │   ├── project/             # Project context/hooks
+│   │   └── styles.css           # Global styles (Tailwind)
+│   ├── e2e/                     # Playwright E2E tests
+│   ├── playwright.config.ts     # Playwright config
+│   ├── global-setup.ts          # E2E global setup
+│   └── global-teardown.ts       # E2E global teardown
+├── database/
+│   └── schema.sql               # PostgreSQL schema design (reference only)
+├── diagrams/
+│   └── devflow_database_erd.mmd # Mermaid ER diagram
+├── docs/
+│   ├── 00_PROJECT_CONTEXT.md
+│   ├── 01_IMPLEMENTATION_PLAN.md
+│   ├── 02_DATABASE_DESIGN.md
+│   ├── 03_API_SPECIFICATION.md
+│   ├── 04_RCIA_DESIGN.md
+│   ├── 05_TESTING_STRATEGY.md
+│   └── 06_SETUP_GUIDE.md
+├── tests/                       # Backend pytest tests
+│   ├── test_authentication.py
+│   ├── test_core_modules.py
+│   ├── test_analytics.py
+│   ├── test_reports.py
+│   ├── test_rate_limit.py
+│   ├── test_sqlite_dev.py
+│   ├── test_team_management.py
+│   └── test_backend_foundation.py
+└── scripts/                     # Utility scripts (currently empty)
+```
 
-## Core API modules
+## Prerequisites
 
-The Phase 4 routes are available below /api/v1/projects. All records are project-scoped, list endpoints accept limit and offset, and access requires a project member relationship unless the user is an Admin. Project Manager, Team Lead, and Admin roles manage project artifacts; Tester may report bugs and manage test cases. The full endpoint reference is in docs/03_API_SPECIFICATION.md.
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Python | 3.11+ | Backend runtime |
+| Node.js | 20+ | Frontend build tooling |
+| npm | 10+ | Frontend package manager |
+| PostgreSQL | 15+ | Production database (optional for local dev) |
+| Git | 2.30+ | Version control |
 
-Admins and Project Managers can manage a project's Developers from the frontend `/team` page. The page uses the project membership endpoints to add existing Developer users, remove Developers (except the project owner), review workload percentages, and inspect project-scoped assigned task details. Team Leads, Developers, and Clients remain read-only for membership. No new database table or migration is required; task assignment remains project-scoped through the existing task API.
+**Note**: SQLite is used for local development; PostgreSQL is required for production. No Docker is required for local development.
 
-Assigned Developers may update their own task status and comment on accessible tasks. Client users have read-only project access.
+## Installation and Environment Configuration
 
-Traceability routes are also available below `/api/v1/projects/{project_id}/traceability-links`. They support validated requirement-to-task, bug, test-case, sprint, and developer links with project isolation. Traceability is the data foundation consumed by the deterministic RCIA service.
+### 1. Clone the Repository
 
-RCIA routes are available below `/api/v1/projects/{project_id}` for change requests, analysis execution, and persisted result retrieval. The engine follows only impact-propagating traceability relationships and records deterministic direct/indirect explanations. It does not use AI, scoring, or reports.
+```bash
+git clone <repository-url>
+cd DevFlow
+```
 
-The role-aware React frontend is available in `frontend/`. It provides login, protected routing, role-specific dashboards/navigation, project and requirement views, change-request actions, and persisted RCIA result views using `VITE_API_BASE_URL`. Build it with `npm run build` from that directory.
+### 2. Backend Setup
 
-Project analytics are available at `/api/v1/projects/{project_id}/analytics/summary` and in the frontend at `/projects/:projectId/analytics`. Metrics are calculated from persisted project records; no production data is fabricated. Project progress uses completed tasks divided by total tasks, with zero progress for projects without tasks.
+```bash
+# From repository root
+python3 -m venv .venv
+source .venv/bin/activate
 
-PDF reports are available at `/api/v1/projects/{project_id}/reports/project-summary`, `/api/v1/projects/{project_id}/reports/sdlc-status`, and `/api/v1/projects/{project_id}/reports/change-impact/{change_request_id}`. The frontend provides downloads at `/projects/:projectId/reports`; files are generated dynamically and are not persisted.
+# Install dependencies
+python -m pip install -r backend/requirements.txt
 
-## Final implementation status
+# Configure environment
+cp backend/.env.example backend/.env
+# Edit backend/.env and set JWT_SECRET_KEY (generate with command below)
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Paste the output into JWT_SECRET_KEY in backend/.env
 
-Implemented and locally verified: authentication, role-aware authorization, project/SDLC modules, traceability, deterministic RCIA, analytics, PDF reports, frontend production build, isolated automated tests, localhost browser CORS integration, and **SQLite development mode**.
+# Initialize SQLite database (development only)
+python -m backend.scripts.init_sqlite
 
-Not verified: PostgreSQL integration execution, because PostgreSQL was unavailable in the development environment.
+# Optional: Seed demo data
+python -m backend.scripts.seed_demo
+# Or for extended review data:
+python -m backend.scripts.seed_review_demo
 
-Not implemented: AI prediction, advanced graph visualization, report persistence/history, and production deployment infrastructure.
+# Start the API server
+uvicorn backend.app.main:app --reload
+```
 
-## Future improvements
+The API will be available at:
+- Root: http://localhost:8000/
+- Health: http://localhost:8000/api/v1/health
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-Future-scope items in the SRS include external integrations, AI-assisted requirement summarization, automatic test-case suggestion, predictive project risk analysis, and daily database backup. They are not part of the baseline implementation without explicit authorization.
+### 3. Frontend Setup
+
+```bash
+# From repository root
+cd frontend
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env if backend runs on a different URL (default: http://localhost:8000/api/v1)
+
+# Start development server
+npm run dev
+```
+
+The frontend will be available at http://localhost:5173 (or next available port).
+
+### 4. Production Database Setup (PostgreSQL)
+
+```bash
+# From repository root with .venv activated
+# 1. Ensure PostgreSQL is running and accessible
+# 2. Create database and user
+# 3. Update backend/.env with PostgreSQL DATABASE_URL:
+#    DATABASE_URL=postgresql+psycopg://user:password@host:port/dbname
+# 4. Run migrations
+alembic upgrade head
+# 5. Start the API server
+uvicorn backend.app.main:app --reload
+```
+
+## Database Initialization and Migrations
+
+### SQLite (Development)
+- File: `backend/devflow_local.db` (gitignored)
+- Created by: `python -m backend.scripts.init_sqlite`
+- Creates all tables, enables foreign keys + WAL mode, seeds default roles
+- Reset: delete the `.db` file and re-run init script
+
+### PostgreSQL (Production)
+- Managed via Alembic migrations in `alembic/versions/`
+- Current migrations:
+  1. `20260921_01_auth_foundation.py` - Roles, users, user_roles
+  2. `20260921_02_core_sdlc.py` - Projects, SDLC entities
+  3. `20260922_03_traceability.py` - Traceability links
+  4. `20260922_04_rcia.py` - Change requests, impact analyses
+  5. `20260923_05_requirement_dependency.py` - Requirement dependencies
+  6. `20260923_06_impact_analysis_artifact_type.py` - Impact analysis artifact types
+- Apply: `alembic upgrade head`
+- Review SQL: `alembic upgrade head --sql`
+
+**Important**: The `alembic/env.py` reads `DATABASE_URL` from `backend/.env` (via `backend.app.core.config.settings`). Ensure `backend/.env` has the correct PostgreSQL URL before running migrations.
+
+## Running Tests
+
+### Backend Tests
+
+```bash
+# From repository root with .venv activated
+# Run all tests (uses isolated SQLite in-memory databases)
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/pytest -q -p no:cacheprovider
+
+# Run specific test file
+.venv/bin/pytest tests/test_authentication.py -v
+
+# Run with coverage
+.venv/bin/pytest --cov=backend.app --cov-report=term-missing
+```
+
+### Frontend Tests
+
+```bash
+# From frontend/ directory
+npm run test          # Vitest unit tests
+npm run test:e2e      # Playwright E2E tests (requires running backend)
+```
+
+### E2E Tests (Full Stack)
+
+The Playwright E2E tests start an isolated backend instance automatically:
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
+## Accessing the Application
+
+| Interface | URL | Purpose |
+|-----------|-----|---------|
+| Frontend (Dev) | http://localhost:5173 | Main application UI |
+| Backend API | http://localhost:8000 | API root |
+| API Health | http://localhost:8000/api/v1/health | Health check |
+| Swagger UI | http://localhost:8000/docs | Interactive API docs |
+| ReDoc | http://localhost:8000/redoc | Alternative API docs |
+
+### Default Roles (Seeded by init_sqlite)
+
+| Role Code | Name | Description |
+|-----------|------|-------------|
+| `admin` | Administrator | Platform administrator |
+| `project_manager` | Project Manager | Project planning and monitoring |
+| `team_lead` | Team Lead | Team coordination and sprint planning |
+| `developer` | Developer | Assigned implementation work |
+| `tester` | Tester | Test and defect management |
+| `client` | Client | Permitted view-only stakeholder |
+
+Registration assigns the `client` role by default. Project membership and project roles are managed separately.
+
+## API Documentation
+
+The complete API specification is in [`docs/03_API_SPECIFICATION.md`](docs/03_API_SPECIFICATION.md).
+
+Key endpoint groups:
+- `/api/v1/auth/*` - Authentication (register, login, me)
+- `/api/v1/projects/*` - Project and SDLC entity management
+- `/api/v1/projects/{project_id}/traceability-links/*` - Traceability
+- `/api/v1/projects/{project_id}/change-requests/*` - Change requests
+- `/api/v1/projects/{project_id}/impact-analyses/*` - RCIA execution
+- `/api/v1/projects/{project_id}/analytics/summary` - Analytics
+- `/api/v1/projects/{project_id}/reports/*` - PDF report downloads
+
+All project-scoped endpoints require project membership (except Admin).
+
+## Screenshots and Diagrams
+
+| Asset | Location | Description |
+|-------|----------|-------------|
+| Database ERD | `diagrams/devflow_database_erd.mmd` | Mermaid entity-relationship diagram |
+| Architecture Diagram | Above (in this README) | Mermaid system architecture |
+
+To view the Mermaid diagrams, use a Markdown viewer with Mermaid support (GitHub, VS Code with extension, or mermaid.live).
+
+## Known Limitations and Setup Caveats
+
+1. **SQLite vs PostgreSQL Differences**: Development uses SQLite; production requires PostgreSQL. Key differences:
+   - UUID generation: Python `uuid4()` vs `gen_random_uuid()`
+   - JSON storage: SQLite `JSON` (text) vs PostgreSQL `JSONB`
+   - Timestamps: Python `datetime.now(timezone.utc)` vs server `now()`
+   - Concurrent writes: SQLite has file-lock limitations
+
+2. **PostgreSQL Not Verified in CI**: Alembic migrations are designed for PostgreSQL but have not been executed against a live PostgreSQL instance in the current environment.
+
+3. **No Production Deployment Config**: Docker, Kubernetes, CI/CD pipelines, and reverse proxy configuration are not included.
+
+4. **Report Persistence**: PDF reports are generated dynamically on each request and are not stored.
+
+5. **AI Features**: Requirement summarization, test-case suggestion, and predictive risk analysis are not implemented.
+
+6. **Frontend Build for Production**: `npm run build` outputs to `frontend/dist/` (gitignored). Serve with a static file server or integrate with backend.
+
+7. **Rate Limiting**: Applied only to `/auth/login` and `/auth/register` endpoints.
+
+8. **CORS**: Configured via `CORS_ORIGINS` in `backend/.env`. Default allows `http://localhost:5173` and `http://127.0.0.1:5173`.
+
+## Contributors
+
+- [Starun](https://github.com/starun) - Primary developer
+
+## Project Links
+
+- Repository: [GitHub URL - to be added]
+- Issue Tracker: [GitHub Issues - to be added]
+- Demo Video: [URL - to be added]
+- Deployed Demo: [URL - to be added]
+
+## License
+
+[License to be determined - not yet specified]

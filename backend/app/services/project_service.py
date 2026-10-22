@@ -16,7 +16,8 @@ def list_projects(db: Session, user: User, limit: int, offset: int, is_admin: bo
         query = query.outerjoin(project_members, project_members.c.project_id == Project.id).where(
             or_(Project.created_by_user_id == user.id, project_members.c.user_id == user.id)
         )
-    return db.scalars(query.limit(limit).offset(offset)).all()
+    # Use distinct to avoid duplicates from outer join with project_members
+    return db.scalars(query.distinct().limit(limit).offset(offset)).all()
 
 
 def create_project(db: Session, project: Project, owner_role: str = "project_manager") -> Project:

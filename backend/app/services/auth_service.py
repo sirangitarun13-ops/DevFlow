@@ -46,7 +46,9 @@ def create_access_token(user: User) -> str:
     if not settings.jwt_secret_key:
         raise RuntimeError("JWT_SECRET_KEY must be configured")
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
+    # Use demo override if set, otherwise use standard expiration
+    expire_minutes = settings.demo_access_token_expire_minutes or settings.access_token_expire_minutes
+    expires_at = now + timedelta(minutes=expire_minutes)
     payload = {
         "sub": str(user.id),
         "roles": [role.code for role in user.roles],

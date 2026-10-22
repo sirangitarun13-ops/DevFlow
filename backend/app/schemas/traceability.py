@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 ArtifactType = Literal["requirement", "task", "bug", "test_case", "sprint", "user"]
-RelationshipType = Literal["implements", "validates", "affects", "belongs_to", "associated_with"]
+RelationshipType = Literal["implements", "validates", "affects", "belongs_to", "associated_with", "depends_on", "blocks"]
 
 
 class TraceabilityLinkCreate(BaseModel):

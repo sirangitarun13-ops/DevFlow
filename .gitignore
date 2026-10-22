@@ -43,6 +43,7 @@ frontend/test-results/
 *.sqlite
 *.sqlite3
 devflow_local.db*
+devflow_demo.db*
 
 # Editors and operating systems
 .DS_Store
@@ -55,3 +56,11 @@ devflow_local.db*
 # Temporary files
 tmp/
 .tmp/
+
+# Backup files
+*.backup
+*.before-hook-fix
+
+# Alembic
+alembic/__pycache__/
+alembic/versions/__pycache__/

@@ -62,6 +62,8 @@ class ImpactAnalysisResultRead(BaseModel):
     impact_analysis_id: UUID
     artifact_type: str
     artifact_id: UUID
+    artifact_key: str | None = None
+    artifact_title: str | None = None
     impact_category: str
     relationship_path: list | None
     explanation: str

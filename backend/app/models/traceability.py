@@ -31,7 +31,7 @@ class TraceabilityLink(Base):
             name="ck_traceability_target_type",
         ),
         CheckConstraint(
-            "relationship_type IN ('implements', 'validates', 'affects', 'belongs_to', 'associated_with')",
+            "relationship_type IN ('implements', 'validates', 'affects', 'belongs_to', 'associated_with', 'depends_on', 'blocks')",
             name="ck_traceability_relationship_type",
         ),
         CheckConstraint(

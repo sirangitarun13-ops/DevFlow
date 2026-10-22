@@ -8,3 +8,12 @@ venv/
 htmlcov/
 *.log
 .env
+.env.local
+
+# SQLite development databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+devflow_local.db*
+devflow_demo.db*

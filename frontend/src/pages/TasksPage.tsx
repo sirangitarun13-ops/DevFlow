@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { ProjectMember, Requirement, Sprint, Task } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -149,23 +150,53 @@ export default function TasksPage() {
 
   const taskColumns = TASK_STATUSES;
 
-  const taskCard = (task: Task) => (
-    <div className="work-card" key={task.id}>
-      <div className="work-card-head">
-        <span className="mono">{task.id.slice(0, 8)}</span>
-        <Badge tone={task.status === "completed" ? "good" : task.status === "blocked" ? "bad" : "accent"}>
-          {task.status.replace("_", " ")}
-        </Badge>
-      </div>
-      <strong>{task.title}</strong>
-      <small>{task.description || "No description"}</small>
-      {task.priority && <span className="work-meta">Priority · {task.priority}</span>}
-      {task.due_date && <span className="work-meta">Due · {task.due_date}</span>}
-      <div className="task-actions">
+  const taskCard = (task: Task) => {
+    const requirement = task.requirement_id ? requirements.find((r) => r.id === task.requirement_id) : null;
+    return (
+      <div className="work-card" key={task.id}>
+        <div className="work-card-head">
+          <span className="mono">{task.id.slice(0, 8)}</span>
+          <Badge tone={task.status === "completed" ? "good" : task.status === "blocked" ? "bad" : "accent"}>
+            {task.status.replace("_", " ")}
+          </Badge>
+        </div>
+        <strong>{task.title}</strong>
+        <small>{task.description || "No description"}</small>
+        {task.priority && <span className="work-meta">Priority · {task.priority}</span>}
+        {task.due_date && <span className="work-meta">Due · {task.due_date}</span>}
+        {requirement && (
+          <div className="work-meta requirement-link">
+            <Link to={`/requirements/${requirement.id}`} className="requirement-ref" onClick={(e) => e.stopPropagation()}>
+              Requirement: {requirement.requirement_key} · {requirement.title}
+            </Link>
+          </div>
+        )}
+        {!requirement && task.requirement_id && <span className="work-meta requirement-link">Requirement not found</span>}
+        {!task.requirement_id && <span className="work-meta requirement-link">No linked requirement</span>}
+        <div className="task-actions">
+        <select
+          value={task.status}
+          onChange={(e) => {
+            e.stopPropagation();
+            const newStatus = e.target.value;
+            if (newStatus !== task.status) {
+              api.updateTask(task.id, { status: newStatus })
+                .then(() => load())
+                .catch((err) => setError(err instanceof Error ? err.message : "Failed to update status"));
+            }
+          }}
+          className="status-select"
+          title="Change status"
+        >
+          {TASK_STATUSES.map((s) => (
+            <option key={s} value={s}>{s.replace("_", " ")}</option>
+          ))}
+        </select>
         <button className="ghost-button" onClick={() => startEdit(task)}>Edit</button>
       </div>
     </div>
   );
+  };
 
   return (
     <>
@@ -250,6 +281,6 @@ export default function TasksPage() {
             : "Select a project to view and manage tasks."}
         />
       )}
-    </>
+</>
   );
 }

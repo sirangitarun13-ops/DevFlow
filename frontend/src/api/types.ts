@@ -7,14 +7,15 @@ export interface DirectoryUser { id: string; full_name: string; email: string; a
 export interface Project { id: string; name: string; description: string | null; status: string; start_date: string | null; end_date: string | null; created_by_user_id: string; created_at: string; updated_at: string }
 export interface Requirement { id: string; project_id: string; requirement_key: string; title: string; description: string; requirement_type: string; priority: string; status: string; version: number }
 export interface Task { id: string; project_id: string; requirement_id: string | null; sprint_id: string | null; title: string; description?: string | null; assigned_to_user_id: string | null; priority: string; status: string; due_date?: string | null }
-export interface Bug { id: string; project_id: string; requirement_id: string | null; task_id: string | null; title: string; severity: string; status: string; assigned_to_user_id: string | null }
+export interface Bug { id: string; project_id: string; requirement_id: string | null; task_id: string | null; title: string; description: string; severity: string; status: string; assigned_to_user_id: string | null }
 export interface TestCase { id: string; project_id: string; requirement_id: string; title: string; status: string }
 export interface Sprint { id: string; project_id: string; name: string; goal: string | null; start_date: string; end_date: string; status: string }
 export interface Milestone { id: string; project_id: string; name: string; description: string | null; due_date: string | null; status: string }
 export interface TraceabilityLink { id: string; project_id: string; source_artifact_type: string; source_artifact_id: string; target_artifact_type: string; target_artifact_id: string; relationship_type: string; created_by_user_id: string; created_at: string }
+export interface TraceabilityLinkCreate { source_artifact_type: string; source_artifact_id: string; target_artifact_type: string; target_artifact_id: string; relationship_type: string }
 export interface ChangeRequest { id: string; requirement_id: string; requested_by_user_id: string; reviewed_by_user_id: string | null; change_summary: string; proposed_description: string | null; proposed_priority: string | null; proposed_status: string | null; status: string; reviewed_at: string | null; implemented_at: string | null; created_at: string; updated_at: string }
 export interface ImpactAnalysis { id: string; project_id: string; requirement_id: string; change_request_id: string | null; initiated_by_user_id: string; status: string; summary: string | null; started_at: string; completed_at: string | null }
-export interface ImpactResult { id: string; impact_analysis_id: string; artifact_type: string; artifact_id: string; impact_category: "direct" | "indirect"; relationship_path: Array<Record<string, string>> | null; explanation: string; created_at: string }
+export interface ImpactResult { id: string; impact_analysis_id: string; artifact_type: string; artifact_id: string; artifact_key: string | null; artifact_title: string | null; impact_category: "direct" | "indirect"; relationship_path: Array<Record<string, string>> | null; explanation: string; created_at: string }
 export interface AnalyticsSummary {
   project: { id: string; name: string; status: string; progress_percent: number; progress_formula: string; start_date: string | null; end_date: string | null };
   requirements: { total: number; by_status: Record<string, number>; by_priority: Record<string, number> };

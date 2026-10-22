@@ -50,5 +50,123 @@ export default function DashboardPage() {
 
   const pendingChanges = analytics ? Object.entries(analytics.change_requests.by_status).filter(([status]) => !["implemented", "rejected", "withdrawn"].includes(status)).reduce((sum, [, count]) => sum + count, 0) : changes.filter((change) => !["implemented", "rejected", "withdrawn"].includes(change.status)).length;
   const openBugs = analytics ? analytics.bugs.total - (analytics.bugs.by_status.resolved ?? 0) - (analytics.bugs.by_status.closed ?? 0) : bugs.filter((bug) => !["resolved", "closed"].includes(bug.status)).length;
-  return <><PageTitle eyebrow={copy.eyebrow} title={copy.title} detail={`${selectedProject.name} · ${copy.detail}`} action={<Link className="primary-button" to={`/projects/${selectedProject.id}/analytics`}>Open analytics</Link>} /><div className="metrics-grid"><Metric label="Projects" value={projects.length} accent /><Metric label="Progress" value={analytics ? `${analytics.project.progress_percent}%` : "—"} /><Metric label="Requirements" value={analytics?.requirements.total ?? requirements.length} /><Metric label={role === "tester" ? "Test cases" : "Tasks"} value={analytics ? (role === "tester" ? analytics.test_cases.total : analytics.tasks.total) : (role === "tester" ? tests.length : tasks.length)} /><Metric label="Open bugs" value={openBugs} /></div><div className="dashboard-grid"><Card><div className="card-heading"><div><span className="eyebrow">CURRENT PROJECT</span><h2>{selectedProject.name}</h2></div><Link to={`/requirements`} className="text-link">View requirements</Link></div>{requirements.length ? <div className="project-list">{requirements.slice(0, 5).map((requirement) => <Link className="project-row" to={`/requirements/${requirement.id}`} key={requirement.id}><span className="project-icon">{requirement.requirement_key.slice(0, 1)}</span><span><strong>{requirement.requirement_key} · {requirement.title}</strong><small>{requirement.description}</small></span><Badge tone={requirement.status === "completed" ? "good" : "accent"}>{requirement.status}</Badge></Link>)}</div> : <EmptyAction title="No requirements yet" detail="Capture the product behavior this project needs to deliver." to="/requirements" label="Open requirements" />}</Card><Card><div className="card-heading"><div><span className="eyebrow">DELIVERY SIGNALS</span><h2>Current focus</h2></div></div><div className="signal-list"><div><span>Pending change requests</span><strong>{pendingChanges}</strong></div><div><span>In-progress tasks</span><strong>{analytics?.tasks.by_status.in_progress ?? tasks.filter((task) => task.status === "in_progress").length}</strong></div><div><span>Failed tests</span><strong>{analytics?.test_cases.by_status.failed ?? tests.filter((test) => test.status === "failed").length}</strong></div></div></Card></div></>;
+
+  const metrics = [
+    { label: "Projects", value: projects.length, to: "/projects", accent: true },
+    { label: "Progress", value: analytics ? `${analytics.project.progress_percent}%` : "—", to: `/projects/${selectedProject.id}/analytics`, accent: false },
+    { label: "Requirements", value: analytics?.requirements.total ?? requirements.length, to: "/requirements", accent: false },
+    { label: role === "tester" ? "Test cases" : "Tasks", value: analytics ? (role === "tester" ? analytics.test_cases.total : analytics.tasks.total) : (role === "tester" ? tests.length : tasks.length), to: role === "tester" ? "/test-cases" : "/tasks", accent: false },
+    { label: "Open bugs", value: openBugs, to: "/bugs", accent: false },
+  ];
+
+  return (
+    <>
+      <PageTitle
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        detail={`${selectedProject.name} · ${copy.detail}`}
+        action={<Link className="primary-button" to={`/projects/${selectedProject.id}/analytics`}>Open analytics</Link>}
+      />
+      <div className="metrics-grid">
+        {metrics.map((metric, idx) => (
+          <Link key={idx} to={metric.to} className="metric-link" style={{ textDecoration: "none", color: "inherit" }}>
+            <Metric label={metric.label} value={metric.value} accent={metric.accent} />
+          </Link>
+        ))}
+      </div>
+      <div className="dashboard-grid">
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">CURRENT PROJECT</span>
+              <h2>{selectedProject.name}</h2>
+            </div>
+            <Link to={`/requirements`} className="text-link">
+              View requirements
+            </Link>
+          </div>
+          {requirements.length ? (
+            <div className="project-list">
+              {requirements.slice(0, 5).map((requirement) => (
+                <Link className="project-row" to={`/requirements/${requirement.id}`} key={requirement.id}>
+                  <span className="project-icon">{requirement.requirement_key.slice(0, 1)}</span>
+                  <span>
+                    <strong>{requirement.requirement_key} · {requirement.title}</strong>
+                    <small>{requirement.description}</small>
+                  </span>
+                  <Badge tone={requirement.status === "completed" ? "good" : "accent"}>{requirement.status}</Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyAction title="No requirements yet" detail="Capture the product behavior this project needs to deliver." to="/requirements" label="Open requirements" />
+          )}
+        </Card>
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">DELIVERY SIGNALS</span>
+              <h2>Current focus</h2>
+            </div>
+          </div>
+          <div className="signal-list">
+            <div><span>Pending change requests</span><strong>{pendingChanges}</strong></div>
+            <div><span>In-progress tasks</span><strong>{analytics?.tasks.by_status.in_progress ?? tasks.filter((t) => t.status === "in_progress").length}</strong></div>
+            <div><span>Open bugs</span><strong>{openBugs}</strong></div>
+            <div><span>Upcoming sprints</span><strong>{analytics?.sprints.active ? 1 : 0}</strong></div>
+          </div>
+        </Card>
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">REQUIREMENTS</span>
+              <h2>Top 5 by priority</h2>
+            </div>
+            <Link to={`/requirements`} className="text-link">View all</Link>
+          </div>
+          {requirements.length ? (
+            <div className="project-list">
+              {requirements.slice(0, 5).map((req) => (
+                <Link className="project-row" to={`/requirements/${req.id}`} key={req.id}>
+                  <span className="project-icon">{req.requirement_key.slice(0, 1)}</span>
+                  <span>
+                    <strong>{req.requirement_key} · {req.title}</strong>
+                    <small>{req.description}</small>
+                  </span>
+                  <Badge tone={req.status === "completed" ? "good" : "accent"}>{req.status}</Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyAction title="No requirements yet" detail="Capture the product behavior this project needs to deliver." to="/requirements" label="Open requirements" />
+          )}
+        </Card>
+        <Card>
+          <div className="card-heading">
+            <div>
+              <span className="eyebrow">TASKS</span>
+              <h2>Assigned to you</h2>
+            </div>
+            <Link to={`/tasks`} className="text-link">View all</Link>
+          </div>
+          {tasks.length ? (
+            <div className="project-list">
+              {tasks.slice(0, 5).map((task) => (
+                <Link className="project-row" to={`/tasks/${task.id}`} key={task.id}>
+                  <span className="project-icon">{task.id.slice(0, 1)}</span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.description || "No description"}</small>
+                  </span>
+                  <Badge tone={task.status === "completed" ? "good" : "accent"}>{task.status}</Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyAction title="No tasks yet" detail="Create tasks to track implementation work." to="/tasks" label="Open tasks" />
+          )}
+        </Card>
+      </div>
+    </>
+  );
 }

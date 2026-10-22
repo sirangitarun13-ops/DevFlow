@@ -60,7 +60,7 @@ class ImpactAnalysis(Base):
 class ImpactAnalysisResult(Base):
     __tablename__ = "impact_analysis_results"
     __table_args__ = (
-        CheckConstraint("artifact_type IN ('task', 'bug', 'test_case', 'sprint', 'user')", name="ck_impact_results_artifact_type"),
+        CheckConstraint("artifact_type IN ('task', 'bug', 'test_case', 'sprint', 'user', 'requirement')", name="ck_impact_results_artifact_type"),
         CheckConstraint("impact_category IN ('direct', 'indirect')", name="ck_impact_results_category"),
         UniqueConstraint("impact_analysis_id", "artifact_type", "artifact_id", name="uq_impact_analysis_artifact"),
         Index("idx_impact_analysis_results_analysis_type", "impact_analysis_id", "artifact_type"),

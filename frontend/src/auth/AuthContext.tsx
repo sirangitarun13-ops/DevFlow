@@ -42,7 +42,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restore();
     const expired = () => setUser(null);
     window.addEventListener("devflow:session-expired", expired);
-    return () => window.removeEventListener("devflow:session-expired", expired);
+    // Periodically validate session by calling /auth/me
+    const interval = setInterval(async () => {
+      if (tokenStore.get()) {
+        try {
+          await api.me();
+        } catch {
+          tokenStore.clear();
+          setUser(null);
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+    return () => {
+      window.removeEventListener("devflow:session-expired", expired);
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchProjectMembers = async (projectId: string): Promise<ProjectMember[]> => {

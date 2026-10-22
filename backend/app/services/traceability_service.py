@@ -19,13 +19,14 @@ ARTIFACT_MODELS = {
     "sprint": Sprint,
     "user": User,
 }
-RELATIONSHIP_TYPES = {"implements", "validates", "affects", "belongs_to", "associated_with"}
+RELATIONSHIP_TYPES = {"implements", "validates", "affects", "belongs_to", "associated_with", "depends_on", "blocks"}
 SUPPORTED_PAIRS = {
     ("requirement", "task"): {"implements", "affects", "belongs_to", "associated_with"},
     ("requirement", "bug"): {"affects", "associated_with"},
     ("requirement", "test_case"): {"validates", "associated_with"},
     ("requirement", "sprint"): {"belongs_to", "associated_with"},
     ("requirement", "user"): {"belongs_to", "associated_with"},
+    ("requirement", "requirement"): {"depends_on", "blocks"},
 }
 
 
